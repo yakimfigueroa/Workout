@@ -21,4 +21,85 @@ h1{font-size:26px;margin:6px 0 4px}.sub{color:#999;margin-bottom:14px}
 .bar{height:8px;background:#222;border-radius:4px;margin:4px 0 10px}.fill{height:100%;background:#3ddc84;border-radius:4px}
 .note{color:#999;font-size:13px}
 input.tx{width:100%;box-sizing:border-box;background:#1d1d1d;color:#eee;border:1px solid #333;border-radius:10px;padding:12px;font-size:16px}
-.erow{display:flex;gap:8px;margin-bottom:8px}.erow .x
+.erow{display:flex;gap:8px;margin-bottom:8px}.erow .x{background:#3a1d1d;color:#ff6b6b;border:0;border-radius:10px;width:46px;font-size:18px}
+.add{background:#1d2a1d;color:#3ddc84}.save{background:#ff6b35;color:#fff;margin-top:18px;width:100%}
+.lbl{font-size:13px;color:#999;margin:12px 0 6px}
+.month{margin-bottom:18px}.mname{font-weight:700;margin-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cell{aspect-ratio:1;border-radius:6px;background:#1a1a1a;font-size:11px;display:flex;align-items:center;justify-content:center;color:#666}
+.cell.done{background:#3ddc84;color:#111}.cell.part{background:#2a6b45;color:#ddd}.cell.miss{background:#333;color:#888}
+.cell.today{outline:2px solid #ff6b35}.hd{font-size:11px;color:#777;text-align:center}
+.legend{font-size:13px;color:#999;margin-bottom:14px}
+</style></head><body>
+<div class="top">
+ <button id="vW" onclick="view='week';edit=false;render()">Week</button>
+ <button id="vC" onclick="view='cal';edit=false;render()">Calendar</button>
+ <button id="vE" onclick="view='week';edit=!edit;render()">Edit</button>
+</div>
+<div id="app"></div>
+<script>
+const S="4×8–12",W="Warm up with 1–2 light sets of the first exercise. Last set close to failure.";
+const DEF={
+Mon:{t:"Push: chest, shoulders, triceps",note:W,gym:["Dumbbell bench press "+S,"Incline chest press machine "+S,"Cable flyes "+S,"Dumbbell shoulder press "+S,"Lateral raises "+S,"Cable tricep pushdowns "+S,"Skull crushers "+S],run:["Easy run 3–4 mi"]},
+Tue:{t:"Pull: back & biceps",note:W,gym:["Lat pulldown "+S,"Seated cable row "+S,"Single-arm dumbbell row "+S,"Face pulls "+S,"Dumbbell curls "+S,"Hammer curls "+S],run:["Track / speed workout 4–5 mi total"]},
+Wed:{t:"Legs",note:"Warm up with 1–2 light sets of the first exercise. No run tonight, let your legs recover.",gym:["Leg press or Smith machine squats "+S,"Dumbbell Romanian deadlifts "+S,"Leg extensions "+S,"Hamstring curls "+S,"Walking lunges "+S,"Calf raises "+S],run:[]},
+Thu:{t:"Shoulders & arms",note:W,gym:["Machine shoulder press "+S,"Cable lateral raises "+S,"Rear delt machine "+S,"Cable curls "+S,"Overhead cable tricep extensions "+S],run:["Tempo run 4–6 mi"]},
+Fri:{t:"Upper body mix",note:W,gym:["Incline dumbbell press "+S,"Lat pulldown "+S,"Chest-supported row "+S,"Push-ups "+S,"Dumbbell curls "+S,"Tricep dips "+S],run:["Easy run 3 mi (or rest)"]},
+Sat:{t:"Rest day",note:"Full rest before the long run.",gym:[],run:["Rest & recover"]},
+Sun:{t:"Long run",note:"Easy, conversational pace.",gym:[],run:["Long run 6–13 mi"]}};
+const keys=Object.keys(DEF),names={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday",Sat:"Saturday",Sun:"Sunday"};
+let plan=JSON.parse(localStorage.getItem("plan")||"null")||JSON.parse(JSON.stringify(DEF));
+let checks=JSON.parse(localStorage.getItem("checks")||"{}");
+let view="week",edit=false;
+const now=new Date();now.setHours(0,0,0,0);
+const wd=d=>keys[(d.getDay()+6)%7];
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const mon=new Date(now);mon.setDate(now.getDate()-(now.getDay()+6)%7);
+let sel=wd(now);
+const dateOf=k=>{const d=new Date(mon);d.setDate(mon.getDate()+keys.indexOf(k));return d};
+const all=k=>[...plan[k].gym,...plan[k].run];
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const saveC=()=>localStorage.setItem("checks",JSON.stringify(checks));
+const saveP=()=>localStorage.setItem("plan",JSON.stringify(plan));
+function status(d){const k=wd(d),tot=all(k).length,c=(checks[iso(d)]||[]).slice(0,tot).filter(Boolean).length;
+ if(tot&&c>=tot)return"done";if(c>0)return"part";if(d<now)return"miss";return""}
+function tick(i,v){const k=iso(dateOf(sel));checks[k]=checks[k]||[];checks[k][i]=v;saveC();render()}
+function row(x,i,c){return `<label class="item ${c?'checked':''}"><input type="checkbox" ${c?'checked':''} onchange="tick(${i},this.checked)"><span>${esc(x)}</span></label>`}
+function dayView(){
+ const p=plan[sel],c=checks[iso(dateOf(sel))]||[],tot=all(sel).length,n=c.slice(0,tot).filter(Boolean).length;
+ let h=`<h1>${names[sel]}${sel===wd(now)?" (Today)":""}</h1><div class="sub">${esc(p.t)}</div>`;
+ h+=`<div class="days">`+keys.map(k=>`<button class="${k===sel?'on':''} ${status(dateOf(k))==='done'?'done':''}" onclick="sel='${k}';render()">${k}</button>`).join("")+`</div>`;
+ h+=`<div class="bar"><div class="fill" style="width:${tot?n/tot*100:0}%"></div></div><div class="note">${esc(p.note)}</div>`;
+ if(p.gym.length)h+=`<div class="sec">Morning: Gym</div>`+p.gym.map((x,i)=>row(x,i,c[i])).join("");
+ if(p.run.length)h+=`<div class="sec">${p.gym.length?"Evening: Run":"Today"}</div>`+p.run.map((x,i)=>row(x,i+p.gym.length,c[i+p.gym.length])).join("");
+ return h}
+function list(part,label){const a=plan[sel][part];
+ return `<div class="lbl">${label}</div>`+a.map((x,i)=>`<div class="erow"><input class="tx" value="${esc(x)}" oninput="plan[sel].${part}[${i}]=this.value"><button class="x" onclick="plan[sel].${part}.splice(${i},1);render()">✕</button></div>`).join("")+
+ `<button class="btn add" onclick="plan[sel].${part}.push('New exercise ${S}');render()">+ Add</button>`}
+function editView(){const p=plan[sel];
+ let h=`<h1>Edit ${names[sel]}</h1><div class="days">`+keys.map(k=>`<button class="${k===sel?'on':''}" onclick="sel='${k}';render()">${k}</button>`).join("")+`</div>`;
+ h+=`<div class="lbl">Day title</div><input class="tx" value="${esc(p.t)}" oninput="plan[sel].t=this.value">`;
+ h+=`<div class="lbl">Notes</div><input class="tx" value="${esc(p.note)}" oninput="plan[sel].note=this.value">`;
+ h+=list("gym","Morning: Gym")+list("run","Evening: Run");
+ h+=`<button class="btn save" onclick="saveP();edit=false;render()">Save</button>`;
+ h+=`<button class="btn" style="width:100%;margin-top:10px" onclick="if(confirm('Reset this day to the original plan?')){plan[sel]=JSON.parse(JSON.stringify(DEF[sel]));saveP();render()}">Reset day to original</button>`;
+ return h}
+function calView(){const y=now.getFullYear();let done=0;
+ let h=`<h1>${y}</h1>`;
+ let body="";
+ for(let m=0;m<12;m++){const f=new Date(y,m,1),dim=new Date(y,m+1,0).getDate();
+  body+=`<div class="month"><div class="mname">${f.toLocaleString("en",{month:"long"})}</div><div class="grid">`+["M","T","W","T","F","S","S"].map(x=>`<div class="hd">${x}</div>`).join("");
+  for(let b=0;b<(f.getDay()+6)%7;b++)body+=`<div></div>`;
+  for(let d=1;d<=dim;d++){const dt=new Date(y,m,d),s=status(dt);if(s==="done")done++;
+   body+=`<div class="cell ${s} ${dt.getTime()===now.getTime()?'today':''}">${d}</div>`}
+  body+=`</div></div>`}
+ h+=`<div class="sub">${done} days fully completed</div><div class="legend">Green = done · Dark green = partly done · Grey = missed</div>`+body;
+ return h}
+function render(){
+ document.getElementById("vW").className=view==="week"&&!edit?"on":"";
+ document.getElementById("vC").className=view==="cal"?"on":"";
+ document.getElementById("vE").className=edit?"on":"";
+ document.getElementById("app").innerHTML=view==="cal"?calView():edit?editView():dayView();
+ if(view==="cal"){const t=document.querySelector(".cell.today");if(t)t.scrollIntoView({block:"center"})}}
+render();
+</script></blockquote></body></html>
