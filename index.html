@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Workouts">
+<title>Workouts</title>
+<style>
+body{font-family:-apple-system,sans-serif;margin:0;background:#111;color:#eee;padding:20px 16px 40px}
+h1{font-size:26px;margin:10px 0 4px}.sub{color:#999;margin-bottom:16px}
+.days{display:flex;gap:6px;overflow-x:auto;margin-bottom:18px}
+.days button{flex:1;padding:10px 0;border:0;border-radius:10px;background:#222;color:#ccc;font-weight:600}
+.days button.on{background:#ff6b35;color:#fff}.days button.done{outline:2px solid #3ddc84}
+.item{display:flex;align-items:center;gap:12px;background:#1d1d1d;padding:14px;border-radius:12px;margin-bottom:10px}
+.item input{width:24px;height:24px;accent-color:#3ddc84}
+.item.checked span{text-decoration:line-through;color:#777}
+.bar{height:8px;background:#222;border-radius:4px;margin:6px 0 18px}.fill{height:100%;background:#3ddc84;border-radius:4px}
+</style></head><body>
+<h1 id="title"></h1><div class="sub" id="sub"></div>
+<div class="days" id="days"></div>
+<div class="bar"><div class="fill" id="fill"></div></div>
+<div id="list"></div>
+<script>
+const plan={
+Mon:["Upper body gym","Bench press 4×8","Pull-ups 4×max","Overhead press 3×10","Dumbbell rows 3×10","Plank 3×45s"],
+Tue:["Track workout","Warm-up 2 mi easy","6×800m at 5K pace, 400m jog between","Cool-down 1 mi"],
+Wed:["Lower body gym","Squats 4×6","Romanian deadlifts 3×8","Walking lunges 3×12","Calf raises 3×15","Dead bugs 3×12"],
+Thu:["Easy run + core","Easy run 4–6 mi","Side planks 3×30s each","Bird dogs 3×10"],
+Fri:["Full body gym","Deadlifts 3×5","Push-ups 3×15","Step-ups 3×10 each","Face pulls 3×12","Hanging knee raises 3×12"],
+Sat:["Long run","Long run 8–14 mi, easy pace","Stretch 10 min"],
+Sun:["Rest / optional gym","Mobility or yoga 15 min","Optional: light full-body gym"]};
+const keys=Object.keys(plan),names={Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday",Sat:"Saturday",Sun:"Sunday"};
+const now=new Date(),today=keys[(now.getDay()+6)%7];
+const mon=new Date(now);mon.setDate(now.getDate()-(now.getDay()+6)%7);
+const wk="wk-"+mon.toDateString();
+let data=JSON.parse(localStorage.getItem(wk)||"{}"),sel=today;
+function save(){localStorage.setItem(wk,JSON.stringify(data))}
+function render(){
+ const [t,...items]=plan[sel];data[sel]=data[sel]||[];
+ document.getElementById("title").textContent=names[sel]+(sel===today?" (Today)":"");
+ document.getElementById("sub").textContent=t;
+ document.getElementById("days").innerHTML=keys.map(k=>{
+  const d=(data[k]||[]).filter(Boolean).length===plan[k].length-1;
+  return `<button class="${k===sel?'on':''} ${d?'done':''}" onclick="sel='${k}';render()">${k}</button>`}).join("");
+ document.getElementById("list").innerHTML=items.map((x,i)=>
+  `<label class="item ${data[sel][i]?'checked':''}"><input type="checkbox" ${data[sel][i]?'checked':''} onchange="data[sel][${i}]=this.checked;save();render()"><span>${x}</span></label>`).join("");
+ const n=data[sel].filter(Boolean).length;
+ document.getElementById("fill").style.width=(n/items.length*100)+"%";
+}
+render();
+</script></body></html>
